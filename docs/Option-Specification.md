@@ -1,9 +1,9 @@
 # Option<T> Type Specification
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Date:** November 18, 2025  
 **Project:** EHonda.Optional.Core  
-**Status:** Approved
+**Status:** Implemented
 
 ---
 
@@ -100,9 +100,6 @@ Option<string> some = "hello";
 // Generic static method
 Option<string> none = Option.None<string>();
 
-// Property-based (for type inference)
-Option<string> none = Option.None;
-
 // Default
 Option<string> none = default;
 ```
@@ -110,7 +107,8 @@ Option<string> none = default;
 **Specification:**
 - `Option.Some<T>(T value)`: Creates Option with value (even if value is `null`)
 - `Option.None<T>()`: Explicitly creates None option
-- `Option.None` property: Enables type inference in contexts like LINQ
+
+**Note:** C# does not allow both a generic method `None<T>()` and a property `None` with the same identifier, even though one has type parameters. Therefore, only the generic method is provided. In contexts where type inference is needed, use explicit type parameters or rely on `default`.
 
 ---
 
@@ -465,22 +463,26 @@ void Switch(Action<T> some, Action none)
 6. **Performance:** Value type (struct) avoids heap allocations for common scenarios
 7. **Discoverability:** Rich IDE support via JetBrains annotations and XML docs
 
+### 15.1 C# Language Limitations
+
+During implementation, we discovered that C# does not allow a class to contain both a generic method `None<T>()` and a property `None` with the same identifier, even though one has type parameters. This is a compile-time error in C#. Therefore, only the generic method `Option.None<T>()` is provided. Users must use explicit type parameters where needed, or rely on `default(Option<T>)` for type-inferred None construction.
+
 ---
 
 ## 16. Implementation Checklist
 
-- [ ] Define `Option<T>` readonly record struct
-- [ ] Implement private constructor, `HasValue`, and `Value` properties
-- [ ] Create static factory class `Option` with `Some<T>()`, `None<T>()`, and `None` property
-- [ ] Implement `Or(T)`, `Or(Func<T>)`, `OrDefault()`, `OrThrow()` methods
-- [ ] Add implicit conversion from `T` to `Option<T>`
-- [ ] Add explicit conversion from `Option<T>` to `T`
-- [ ] Implement `Deconstruct` for pattern matching
-- [ ] Apply JetBrains annotations (`[Pure]`, `[MustUseReturnValue]`)
-- [ ] Add comprehensive XML documentation with examples
-- [ ] Ensure nullable reference type annotations are correct
+- [x] Define `Option<T>` readonly record struct
+- [x] Implement private constructor, `HasValue`, and `Value` properties
+- [x] Create static factory class `Option` with `Some<T>()` and `None<T>()` methods
+- [x] Implement `Or(T)`, `Or(Func<T>)`, `OrDefault()`, `OrThrow()` methods
+- [x] Add implicit conversion from `T` to `Option<T>`
+- [x] Add explicit conversion from `Option<T>` to `T`
+- [x] Implement `Deconstruct` for pattern matching
+- [x] Apply JetBrains annotations (`[Pure]`, `[MustUseReturnValue]`)
+- [x] Add comprehensive XML documentation with examples
+- [x] Ensure nullable reference type annotations are correct
 - [ ] Write unit tests covering all scenarios
-- [ ] Document nullable `T` behavior in remarks
+- [x] Document nullable `T` behavior in remarks
 
 ---
 
@@ -527,15 +529,6 @@ public static class Option
 {
     public static Option<T> Some<T>(T value);
     public static Option<T> None<T>();
-    public static OptionNone None { get; }
-}
-
-/// <summary>
-/// Sentinel type for type-inferred None construction.
-/// </summary>
-public readonly struct OptionNone
-{
-    // Implicit conversions to Option<T> for any T
 }
 ```
 
