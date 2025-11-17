@@ -1,0 +1,10 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Specific to this project -->
+    <Description>Core building blocks for option types.</Description>
+  </PropertyGroup>
+
+  <!-- Common properties are imported from Directory.Build.props -->
+
+</Project>
