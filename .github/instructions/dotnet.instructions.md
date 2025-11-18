@@ -3,7 +3,10 @@ applyTo: '**/*.cs,**/*.csproj,**/*.slnx'
 ---
 # .NET usage instructions
 
+## Creating Projects
+
+- When creating a project, MAKE SURE to also add them to the solution file.
+
 ## Adding .NET Packages
 
-- Use `dotnet add <PROJECT|SOLUTION> package <PACKAGE_NAME>` to add a NuGet package to a project or solution.
-- Specify the version using `--version <VERSION>` if a specific version is required.
+- Always check nuget.org via #fetch for the latest version of any package you are adding and use that version.
