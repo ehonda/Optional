@@ -1,6 +1,6 @@
 ﻿using EHonda.Optional.Core;
 
-namespace Tests;
+namespace EHonda.Optional.Core.Tests;
 
 public class OptionTests
 {

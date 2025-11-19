@@ -1,5 +1,5 @@
 ---
-applyTo: '**/*.cs,**/*.csproj,**/*.slnx'
+applyTo: 'src/**,tests/**,**/Directory.*.props,Optional.slnx'
 ---
 # TUnit Instructions
 
