@@ -1,0 +1,51 @@
+# This GitHub Actions workflow, named ".NET Build and Test", is designed to be called by other workflows.
+# It defines a single job that runs on an Ubuntu environment.
+# This job checks out the repository's code, sets up .NET version 10,
+# explicitly builds the entire solution (including sample projects) to catch build errors,
+# and then executes the tests in Release configuration using TUnit.
+name: .NET Build and Test
+
+on:
+  workflow_call:
+
+jobs:
+  build_and_test:
+    name: Build solution and run tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+      
+      # Explicitly build the entire solution first to catch any build errors,
+      # including in sample projects that aren't built as part of the test dependencies.
+      # This ensures that broken sample projects cannot be merged, as they would
+      # previously pass CI since tests don't depend on sample projects.
+      - name: Build solution
+        run: dotnet build --configuration Release
+
+      # TUnit with Microsoft Testing Platform requires special handling:
+      # 1. TUnit doesn't use VSTest - it uses Microsoft Testing Platform with source generators
+      # 2. 'dotnet test' at solution level builds but doesn't execute tests (observed behavior)
+      # 3. Must use 'dotnet run' on individual test projects to actually execute tests
+      # 4. The test project must have OutputType=Exe and include Microsoft.Testing.Extensions
+      #    packages (like TrxReport) for reporting features to work
+      - name: Discover test projects
+        id: discover-tests
+        run: |
+          TEST_PROJECTS=$(find tests -name "*.csproj" -type f | tr '\n' ' ')
+          echo "test_projects=$TEST_PROJECTS" >> $GITHUB_OUTPUT
+          echo "Found test projects: $TEST_PROJECTS"
+        
+      - name: Run tests
+        run: |
+          for project in ${{ steps.discover-tests.outputs.test_projects }}; do
+            echo "Running tests in $project"
+            # Use 'dotnet run' (not 'dotnet test') as required by TUnit with Microsoft Testing Platform
+            # This executes the test project as an executable, allowing TUnit's source generators to work properly
+            dotnet run --project "$project" --configuration Release
+          done

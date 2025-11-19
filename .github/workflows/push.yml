@@ -1,0 +1,217 @@
+name: Release and publish to nuget.org
+
+# This workflow automatically creates a release and publishes to nuget.org, if the package version does not already
+# exist. For now it is just copied from this work in progress (which has more context in comments):
+#   https://github.com/ehonda/EHonda.HelloNuget/blob/eb9bd36a907fb7ca57b6a88df6e935a285517ca4/.github/workflows/auto-release.yml
+#
+# This GitHub Actions workflow, named "Release and publish to nuget.org", is triggered on pushes to the `main` branch.
+# It orchestrates a series of jobs for multiple projects within the `src` directory to:
+#   1. Run tests using a reusable workflow.
+#   2. Dynamically determine the list of projects to process using the `define-projects-matrix` job.
+#   3. For each project identified by the matrix (handled by a single matrix job "release-and-publish"):
+#      a. Extract package metadata (version and ID).
+#      b. Check if the extracted package version already exists on nuget.org.
+#      c. If the package version does not exist:
+#         i. Create a new GitHub release for that package.
+#         ii. Pack the project.
+#         iii. Publish the new version to nuget.org.
+#
+# It originates from this:
+#   https://github.com/ehonda/EHonda.HelloNuget/blob/eb9bd36a907fb7ca57b6a88df6e935a285517ca4/.github/workflows/auto-release.yml
+
+# This workflow is triggered on pushes to the `main` branch and can also be run manually via `workflow_dispatch`.
+# It requires the `NUGET_ORG_API_KEY` secret to be set in the repository settings for publishing to NuGet.org.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  # This job, "build_and_test", builds the solution and executes the project's tests.
+  # It achieves this by calling the reusable workflow defined in `./.github/workflows/dotnet-build-and-test.yml`.
+  # This step is crucial for ensuring code quality and correctness before any release or publishing actions are taken.
+  build_and_test:
+    uses: ./.github/workflows/dotnet-build-and-test.yml
+
+  # This job, "define-projects-matrix", dynamically determines the list of projects to be processed.
+  # It scans the src/ directory for subdirectories containing correspondingly named .csproj files.
+  # The output is a JSON array of project names, used by the 'release-and-publish' job's matrix strategy.
+  define-projects-matrix:
+    name: Define Projects Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.generate-matrix.outputs.projects }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Generate projects matrix
+        id: generate-matrix
+        run: |
+          PROJECT_ARRAY=()
+          # Iterate over subdirectories in src/
+          for dir_path in src/*/; do
+            # Remove trailing slash for basename
+            dir_path_cleaned=${dir_path%/}
+            dir_name=$(basename "$dir_path_cleaned")
+            
+            # Check if a .csproj file exists in this directory with the same name as the directory
+            # e.g., src/Core/Core.csproj
+            if [ -f "$dir_path_cleaned/$dir_name.csproj" ]; then
+              # Add the directory name, correctly enclosed in double quotes, to the bash array
+              PROJECT_ARRAY+=("\"$dir_name\"")
+            fi
+          done
+
+          # Join the array elements with a comma
+          # IFS (Internal Field Separator) is set to comma for the join operation
+          OLD_IFS="$IFS"
+          IFS=','
+          PROJECT_LIST="${PROJECT_ARRAY[*]}"
+          IFS="$OLD_IFS" # Restore IFS
+
+          JSON_OUTPUT="[$PROJECT_LIST]"
+          echo "Generated project matrix: $JSON_OUTPUT" # For debugging
+          echo "projects=$JSON_OUTPUT" >> "$GITHUB_OUTPUT"
+
+          # Fail if no projects are found, as this likely indicates an issue.
+          if [ ${#PROJECT_ARRAY[@]} -eq 0 ]; then
+            echo "::error::No projects found matching the pattern src/*/<project_name>.csproj where project name matches directory name."
+            echo "Resulting JSON_OUTPUT would be []."
+            exit 1
+          fi
+
+  # This job, "release-and-publish", handles the entire release and publish process for each project.
+  # It uses a matrix strategy to iterate over specified projects. For each project, it:
+  # 1. Checks out code and sets up .NET.
+  # 2. Extracts package metadata (version and ID).
+  # 3. Checks if the package version already exists on NuGet.org.
+  # 4. If the version is new, it creates a GitHub release, packs the project, and publishes it to NuGet.org.
+  release-and-publish:
+    name: Release & Publish ${{ matrix.project_name }}
+    runs-on: ubuntu-latest
+    needs: [build_and_test, define-projects-matrix]
+    permissions:
+      contents: write # Required for creating GitHub releases
+    strategy:
+      matrix:
+        # Dynamically set project_name from the output of define-projects-matrix job
+        project_name: ${{ fromJSON(needs.define-projects-matrix.outputs.projects) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x' # Updated to 10.x
+
+      # Objective: Extracts the PackageVersion and PackageId from the project's .csproj file.
+      # Conditions: Runs for every project defined in the matrix. This is a foundational step
+      #             and does not have an 'if' condition.
+      # How: Uses 'dotnet build --getProperty:PackageVersion' and '--getProperty:PackageId'
+      #      to retrieve metadata. The values are then trimmed and set as step outputs.
+      #      The job will fail if these values are empty or whitespace.
+      - name: Get package metadata for ${{ matrix.project_name }}
+        id: get-metadata
+        run: |
+          PROJECT_FILE_PATH="src/${{ matrix.project_name }}/${{ matrix.project_name }}.csproj"
+          echo "Attempting to get PackageVersion from $PROJECT_FILE_PATH"
+          VERSION_RAW=$(dotnet build "$PROJECT_FILE_PATH" --getProperty:PackageVersion --nologo -v q)
+          echo "Attempting to get PackageId from $PROJECT_FILE_PATH"
+          ID_RAW=$(dotnet build "$PROJECT_FILE_PATH" --getProperty:PackageId --nologo -v q)
+
+          echo "Raw output for Version for ${{ matrix.project_name }}: [$VERSION_RAW]"
+          echo "Raw output for ID for ${{ matrix.project_name }}: [$ID_RAW]"
+
+          VERSION_VAL=$(echo "$VERSION_RAW" | xargs)
+          ID_VAL=$(echo "$ID_RAW" | xargs)
+          
+          echo "Trimmed Version for ${{ matrix.project_name }}: [$VERSION_VAL]"
+          echo "Trimmed ID for ${{ matrix.project_name }}: [$ID_VAL]"
+          
+          if [ -z "$VERSION_VAL" ]; then
+            echo "::error::PackageVersion is empty or only whitespace for $PROJECT_FILE_PATH. Raw: [$VERSION_RAW]"
+            exit 1
+          fi
+          if [ -z "$ID_VAL" ]; then
+            echo "::error::PackageId is empty or only whitespace for $PROJECT_FILE_PATH. Raw: [$ID_RAW]"
+            exit 1
+          fi
+          
+          echo "package-version=$VERSION_VAL" >> "$GITHUB_OUTPUT"
+          echo "package-id=$ID_VAL" >> "$GITHUB_OUTPUT"
+
+      # Objective: Ensures a GitHub Release for the current package version exists. If not,
+      #            it creates one. This step determines if the package should be built and published.
+      # Conditions: Runs for every project after package metadata has been successfully extracted.
+      # How: Constructs a release tag (e.g., <PackageId>-v<PackageVersion>).
+      #      Uses 'gh release view' to check for an existing release.
+      #      If found, sets 'should-release=false'.
+      #      If not found, creates a new release using 'gh release create' and sets 'should-release=true'.
+      #      Requires GITHUB_TOKEN for authentication.
+      - name: Ensure GitHub Release for ${{ matrix.project_name }}
+        id: manage_release
+        env:
+          PACKAGE_ID: ${{ steps.get-metadata.outputs.package-id }}
+          PACKAGE_VERSION: ${{ steps.get-metadata.outputs.package-version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_TAG="${PACKAGE_ID}-v${PACKAGE_VERSION}"
+          echo "Attempting to manage GitHub release with tag: $RELEASE_TAG for project ${{ matrix.project_name }}"
+          
+          # Check if the release already exists
+          # Add --repo to be explicit, though gh usually infers it from the checkout.
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "INFO: GitHub release $RELEASE_TAG already exists for ${{ matrix.project_name }}."
+            echo "should-release=false" >> $GITHUB_OUTPUT
+          else
+            echo "INFO: GitHub release $RELEASE_TAG does not exist for ${{ matrix.project_name }}. Creating it."
+            # Create the release
+            gh release create "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Release ${PACKAGE_ID} v${PACKAGE_VERSION}" \
+              --generate-notes
+            echo "INFO: Successfully created GitHub release $RELEASE_TAG for ${{ matrix.project_name }}."
+            echo "should-release=true" >> $GITHUB_OUTPUT
+          fi
+
+      # Objective: Creates a NuGet package (.nupkg file) for the project.
+      # Conditions: Runs only if the 'Ensure GitHub Release' step output 'should-release' is 'true',
+      #             indicating a new GitHub release was created (or was intended to be created).
+      # How: Uses the 'dotnet pack' command with 'Release' configuration.
+      #      The PackageVersion is explicitly passed to ensure consistency.
+      #      Outputs the path and filename of the generated .nupkg file.
+      - name: Pack ${{ matrix.project_name }}
+        id: pack
+        if: steps.manage_release.outputs.should-release == 'true'
+        env:
+          PROJECT_NAME: ${{ matrix.project_name }}
+          PACKAGE_ID: ${{ steps.get-metadata.outputs.package-id }}
+          PACKAGE_VERSION: ${{ steps.get-metadata.outputs.package-version }}
+        run: |
+          PROJECT_FILE_PATH="src/$PROJECT_NAME/$PROJECT_NAME.csproj"
+          echo "Packing $PROJECT_FILE_PATH version $PACKAGE_VERSION"
+          dotnet pack "$PROJECT_FILE_PATH" \
+            --configuration Release \
+            --output ./packages \
+            -p:PackageVersion="$PACKAGE_VERSION"
+          
+          NUPKG_FILENAME="$PACKAGE_ID.$PACKAGE_VERSION.nupkg"
+          echo "NuGet package will be: $NUPKG_FILENAME"
+          echo "nupkg_path=./packages/$NUPKG_FILENAME" >> "$GITHUB_OUTPUT"
+          echo "nupkg_filename=$NUPKG_FILENAME" >> "$GITHUB_OUTPUT"
+
+      # Objective: Publishes the generated NuGet package to NuGet.org.
+      # Conditions: Runs only if the 'Ensure GitHub Release' step output 'should-release' is 'true',
+      #             meaning a new GitHub release was created and the package was packed.
+      # How: Uses 'dotnet nuget push' with the .nupkg file path from the 'Pack' step.
+      #      Requires the NUGET_ORG_API_KEY secret for authentication with NuGet.org.
+      - name: Push ${{ matrix.project_name }} to NuGet.org
+        if: steps.manage_release.outputs.should-release == 'true'
+        env:
+          NUGET_ORG_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          NUPKG_PATH: ${{ steps.pack.outputs.nupkg_path }}
+        run: |
+          echo "Pushing ${{ steps.pack.outputs.nupkg_filename }} to NuGet.org"
+          dotnet nuget push "$NUPKG_PATH" --source https://api.nuget.org/v3/index.json --api-key "$NUGET_ORG_API_KEY"
