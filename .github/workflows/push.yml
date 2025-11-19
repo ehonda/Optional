@@ -44,7 +44,7 @@ jobs:
       projects: ${{ steps.generate-matrix.outputs.projects }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Generate projects matrix
         id: generate-matrix
         run: |
@@ -99,7 +99,7 @@ jobs:
         project_name: ${{ fromJSON(needs.define-projects-matrix.outputs.projects) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
