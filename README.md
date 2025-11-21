@@ -49,7 +49,7 @@ Without `Option<T>`, using a nullable parameter makes it impossible to distingui
 ```csharp
 // Problem: Can't distinguish between default (null) and explicit null
 IService CreateService(IDependency? dependency = null) 
-    => new(dependency ?? CreateDependency());
+    => new Service(dependency ?? CreateDependency());
 
 // Both calls look the same to the method:
 CreateService();      // Intention: Use default dependency
@@ -61,7 +61,7 @@ With `Option<T>`, `None` is distinct from `null`:
 ```csharp
 // Solution: Option<T> distinguishes between None and Some(null)
 IService CreateService(Option<IDependency> dependency = default) 
-    => new(dependency.Or(CreateDependency()));
+    => new Service(dependency.Or(CreateDependency()));
 
 // Now the behavior is clear:
 CreateService();      // dependency is None -> uses CreateDependency()
