@@ -22,6 +22,11 @@ Option<string> none = Option.None<string>();
 Option<string> implicitSome = "hello";
 Option<string> defaultNone = default;
 
+// Creation from interfaces
+IService service = new Service();
+Option<IService> interfaceSome = Option.Some(service); // ✅ Use Some for interfaces
+// Option<IService> interfaceImplicit = service; // ❌ Does not compile (see Limitations below)
+
 // Check state
 if (some.HasValue) 
 {
@@ -61,4 +66,42 @@ IService CreateService(Option<IDependency> dependency = default)
 // Now the behavior is clear:
 CreateService();      // dependency is None -> uses CreateDependency()
 CreateService(null);  // dependency is Some(null) -> uses null
+```
+
+## Implicit Conversions
+
+`Option<T>` supports implicit conversions from `T` to `Option<T>`, enabling natural syntax:
+
+```csharp
+Option<int> some = 42;             // Some(42)
+Option<string?> someNull = null;   // Some(null)
+```
+
+### ⚠️ Limitations with Interfaces
+
+You will encounter a compiler error when implicitly converting an interface variable to `Option<Interface>`.
+
+```csharp
+public interface IService { }
+public class Service : IService { }
+
+Service service = new Service();
+Option<IService> works = service;      // ✅ Works
+
+IService interfaceRef = new Service();
+Option<IService> fails = interfaceRef; // ❌ Compiler Error
+```
+
+This is due to how the C# compiler resolves [User-defined implicit conversions](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/conversions#1054-user-defined-implicit-conversions) (Section 10.5.4).
+
+The compiler looks for conversion operators that convert from a type **encompassing** the source type. However, the definition of "encompassing" in [Evaluation of user-defined conversions](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/conversions#1053-evaluation-of-user-defined-conversions) (Section 10.5.3) explicitly excludes interfaces:
+
+> "If a standard implicit conversion ... exists from a type A to a type B, and if **neither A nor B are interface_types**, then A is said to be encompassed by B"
+
+Since `IService` is an interface, it is not considered to be encompassed by the operator's parameter type, so the conversion is not found.
+
+**Workaround:** Use `Option.Some()` explicitly:
+
+```csharp
+Option<IService> fixed = Option.Some(interfaceRef);
 ```
