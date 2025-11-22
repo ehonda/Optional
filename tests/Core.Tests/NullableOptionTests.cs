@@ -164,6 +164,27 @@ public class NullableOptionTests
     }
 
     [Test]
+    public async Task Explicit_Conversion_To_Value_Should_Return_Value()
+    {
+        var option = NullableOption.Some(42);
+        int? value = (int?)option;
+
+        await Assert.That(value).IsEqualTo(42);
+    }
+
+    [Test]
+    public async Task Explicit_Conversion_From_None_Should_Throw()
+    {
+        NullableOption<int> none = default;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        {
+            var _ = (int?)none;
+            return Task.CompletedTask;
+        });
+    }
+
+    [Test]
     public async Task Or_Value_Should_Return_Content_Or_Fallback()
     {
         await Assert.That(NullableOption.Some(5).Or(10)).IsEqualTo(5);

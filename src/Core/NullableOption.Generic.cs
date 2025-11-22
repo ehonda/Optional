@@ -163,4 +163,18 @@ public readonly record struct NullableOption<T>
 
         return Option.Some(option.Value);
     }
+
+    /// <summary>
+    /// Explicitly converts a <see cref="NullableOption{T}"/> to its contained value.
+    /// </summary>
+    /// <param name="option">The option to extract the value from.</param>
+    /// <returns>The contained value.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="option"/> is None (does not have a value).
+    /// </exception>
+    [Pure]
+    public static explicit operator T?(NullableOption<T> option)
+    {
+        return option.OrThrow();
+    }
 }
