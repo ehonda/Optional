@@ -156,11 +156,10 @@ public class NullableOptionTests
     {
         NullableOption<string?> nOpt = NullableOption.Some<string?>(null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.That(() => 
         {
             var _ = (Option<string?>)nOpt;
-            return Task.CompletedTask;
-        });
+        }).Throws<InvalidOperationException>();
     }
 
     [Test]
@@ -177,11 +176,10 @@ public class NullableOptionTests
     {
         NullableOption<int> none = default;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.That(() => 
         {
             var _ = (int?)none;
-            return Task.CompletedTask;
-        });
+        }).Throws<InvalidOperationException>();
     }
 
     [Test]
@@ -210,11 +208,7 @@ public class NullableOptionTests
     {
         await Assert.That(NullableOption.Some(5).OrThrow()).IsEqualTo(5);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => 
-        {
-             NullableOption.None<int>().OrThrow();
-             await Task.CompletedTask;
-        });
+        await Assert.That(() => NullableOption.None<int>().OrThrow()).Throws<InvalidOperationException>();
     }
 
     [Test]

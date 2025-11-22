@@ -35,11 +35,7 @@ public class OptionTests
     [Test]
     public async Task Option_Some_Null_Should_Throw()
     {
-        await Assert.ThrowsAsync<ArgumentNullException>(() => 
-        {
-            Option.Some<string?>(null);
-            return Task.CompletedTask;
-        });
+        await Assert.That(() => Option.Some<string?>(null)).Throws<ArgumentNullException>();
     }
 
     [Test]
@@ -111,11 +107,10 @@ public class OptionTests
     [Test]
     public async Task Implicit_Conversion_From_Null_Should_Throw()
     {
-        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+        await Assert.That(() => 
         {
             Option<string?> option = null;
-            return Task.CompletedTask;
-        });
+        }).Throws<ArgumentNullException>();
     }
 
     [Test]
@@ -132,11 +127,10 @@ public class OptionTests
     {
         Option<int> none = default;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.That(() => 
         {
             var _ = (int)none;
-            return Task.CompletedTask;
-        });
+        }).Throws<InvalidOperationException>();
     }
 
     [Test]
@@ -165,23 +159,11 @@ public class OptionTests
     {
         await Assert.That(Option.Some(5).OrThrow()).IsEqualTo(5);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => 
-        {
-             Option.None<int>().OrThrow();
-             await Task.CompletedTask;
-        });
+        await Assert.That(() => Option.None<int>().OrThrow()).Throws<InvalidOperationException>();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => 
-        {
-             Option.None<int>().OrThrow("Custom message");
-             await Task.CompletedTask;
-        });
+        await Assert.That(() => Option.None<int>().OrThrow("Custom message")).Throws<InvalidOperationException>();
         
-        await Assert.ThrowsAsync<ArgumentException>(async () => 
-        {
-             Option.None<int>().OrThrow(() => new ArgumentException());
-             await Task.CompletedTask;
-        });
+        await Assert.That(() => Option.None<int>().OrThrow(() => new ArgumentException())).Throws<ArgumentException>();
     }
 
     [Test]
