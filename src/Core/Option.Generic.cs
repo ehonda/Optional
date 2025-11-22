@@ -4,25 +4,20 @@ namespace EHonda.Optional.Core;
 
 /// <summary>
 /// Represents an optional value of type <typeparamref name="T"/>.
-/// An option can either be in a "Some" state (containing a value) or a "None" state (containing no value).
+/// An option can either be in a "Some" state (containing a non-null value) or a "None" state (containing no value).
 /// </summary>
-/// <typeparam name="T">The type of the optional value. Can be nullable to distinguish between unspecified and explicit null.</typeparam>
+/// <typeparam name="T">The type of the optional value.</typeparam>
 /// <remarks>
 /// <para>
 /// The <see cref="Option{T}"/> type provides a type-safe way to represent optional values,
-/// distinguishing between "no value" (None) and "some value" (Some), including the ability
-/// to differentiate between an unspecified value and an explicit <c>null</c>.
+/// distinguishing between "no value" (None) and "some value" (Some).
 /// </para>
 /// <para>
 /// The default value <c>default(Option&lt;T&gt;)</c> represents None.
 /// </para>
 /// <para>
-/// When <typeparamref name="T"/> is a nullable type (e.g., <c>string?</c>), the option can represent:
-/// <list type="bullet">
-/// <item><description>None: No value specified</description></item>
-/// <item><description>Some(null): Value explicitly specified as null</description></item>
-/// <item><description>Some(value): Value specified as non-null</description></item>
-/// </list>
+/// This type does not allow <c>null</c> values. If you need to represent an optional value that can be <c>null</c>,
+/// use <see cref="NullableOption{T}"/>.
 /// </para>
 /// </remarks>
 /// <example>
@@ -32,14 +27,10 @@ namespace EHonda.Optional.Core;
 /// Option&lt;string&gt; none = Option.None&lt;string&gt;();
 /// Option&lt;string&gt; defaultNone = default;
 /// 
-/// // Distinguishing unspecified from explicit null
-/// Option&lt;string?&gt; unspecified = default;                    // None
-/// Option&lt;string?&gt; explicitNull = Option.Some&lt;string?&gt;(null); // Some(null)
-/// 
 /// // Using values
 /// string value = some.Or("default");           // "hello"
 /// string value2 = none.Or("default");          // "default"
-/// string? value3 = unspecified.OrDefault();    // null
+/// string? value3 = some.OrDefault();           // "hello"
 /// 
 /// // Pattern matching
 /// var result = some switch
@@ -72,15 +63,11 @@ public readonly record struct Option<T>
     /// When the option is None, accessing this property will return <c>default(T)</c>.
     /// </para>
     /// <para>
-    /// When <typeparamref name="T"/> is a nullable type, this property can legitimately contain <c>null</c>
-    /// when the option is Some(null), which is distinct from None.
-    /// </para>
-    /// <para>
     /// Consider using one of the safe accessor methods (<see cref="Or(T)"/>, <see cref="OrDefault"/>, 
     /// <see cref="OrThrow()"/>) instead of directly accessing this property.
     /// </para>
     /// </remarks>
-    public T? Value { get; }
+    public T Value { get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Option{T}"/> struct with the specified value.
@@ -93,6 +80,11 @@ public readonly record struct Option<T>
     /// </remarks>
     private Option(T value)
     {
+        if (value is null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
         HasValue = true;
         Value = value;
     }
@@ -121,7 +113,7 @@ public readonly record struct Option<T>
     [MustUseReturnValue]
     public T Or(T defaultValue)
     {
-        return HasValue ? Value! : defaultValue;
+        return HasValue ? Value : defaultValue;
     }
 
     /// <summary>
@@ -160,7 +152,7 @@ public readonly record struct Option<T>
             throw new ArgumentNullException(nameof(factory));
         }
 
-        return HasValue ? Value! : factory();
+        return HasValue ? Value : factory();
     }
 
     /// <summary>
@@ -230,7 +222,7 @@ public readonly record struct Option<T>
             throw new InvalidOperationException("Option has no value.");
         }
 
-        return Value!;
+        return Value;
     }
 
     /// <summary>
@@ -260,7 +252,7 @@ public readonly record struct Option<T>
             throw new InvalidOperationException(message);
         }
 
-        return Value!;
+        return Value;
     }
 
     /// <summary>
@@ -301,7 +293,7 @@ public readonly record struct Option<T>
             throw exceptionFactory();
         }
 
-        return Value!;
+        return Value;
     }
 
     /// <summary>
@@ -335,7 +327,7 @@ public readonly record struct Option<T>
     /// </code>
     /// </example>
     [Pure]
-    public void Deconstruct(out bool hasValue, out T? value)
+    public void Deconstruct(out bool hasValue, out T value)
     {
         hasValue = HasValue;
         value = Value;

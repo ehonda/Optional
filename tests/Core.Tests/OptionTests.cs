@@ -1,4 +1,4 @@
-﻿using EHonda.Optional.Core;
+using EHonda.Optional.Core;
 
 namespace EHonda.Optional.Core.Tests;
 
@@ -33,12 +33,9 @@ public class OptionTests
     }
 
     [Test]
-    public async Task Option_Some_Null_Should_Be_Some()
+    public async Task Option_Some_Null_Should_Throw()
     {
-        var option = Option.Some<string?>(null);
-
-        await Assert.That(option.HasValue).IsTrue();
-        await Assert.That(option.Value).IsNull();
+        await Assert.That(() => Option.Some<string>(null!)).Throws<ArgumentNullException>();
     }
 
     [Test]
@@ -78,24 +75,6 @@ public class OptionTests
     }
 
     [Test]
-    public async Task Equality_Some_Null_Should_Not_Equal_None()
-    {
-        var someNull = Option.Some<string?>(null);
-        Option<string?> none = default;
-
-        await Assert.That(someNull).IsNotEqualTo(none);
-    }
-
-    [Test]
-    public async Task Equality_Two_Some_Nulls_Should_Be_Equal()
-    {
-        var a = Option.Some<string?>(null);
-        var b = Option.Some<string?>(null);
-
-        await Assert.That(a).IsEqualTo(b);
-    }
-
-    [Test]
     public async Task Implicit_Conversion_From_Value_Should_Create_Some()
     {
         Option<int> option = 42;
@@ -126,12 +105,12 @@ public class OptionTests
     }
 
     [Test]
-    public async Task Implicit_Conversion_From_Null_Should_Create_Some_Null()
+    public async Task Implicit_Conversion_From_Null_Should_Throw()
     {
-        Option<string?> option = null;
-
-        await Assert.That(option.HasValue).IsTrue();
-        await Assert.That(option.Value).IsNull();
+        await Assert.That(() => 
+        {
+            Option<string> option = null!;
+        }).Throws<ArgumentNullException>();
     }
 
     [Test]
@@ -148,11 +127,10 @@ public class OptionTests
     {
         Option<int> none = default;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.That(() => 
         {
             var _ = (int)none;
-            return Task.CompletedTask;
-        });
+        }).Throws<InvalidOperationException>();
     }
 
     [Test]
@@ -181,23 +159,11 @@ public class OptionTests
     {
         await Assert.That(Option.Some(5).OrThrow()).IsEqualTo(5);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => 
-        {
-             Option.None<int>().OrThrow();
-             await Task.CompletedTask;
-        });
+        await Assert.That(() => Option.None<int>().OrThrow()).Throws<InvalidOperationException>();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => 
-        {
-             Option.None<int>().OrThrow("Custom message");
-             await Task.CompletedTask;
-        });
+        await Assert.That(() => Option.None<int>().OrThrow("Custom message")).Throws<InvalidOperationException>();
         
-        await Assert.ThrowsAsync<ArgumentException>(async () => 
-        {
-             Option.None<int>().OrThrow(() => new ArgumentException());
-             await Task.CompletedTask;
-        });
+        await Assert.That(() => Option.None<int>().OrThrow(() => new ArgumentException())).Throws<ArgumentException>();
     }
 
     [Test]
@@ -222,5 +188,14 @@ public class OptionTests
         {
             Assert.Fail("Should have matched None pattern");
         }
+    }
+
+    [Test]
+    public async Task Default_Option_Of_Reference_Type_Should_Be_None()
+    {
+        Option<string> option = default;
+        
+        await Assert.That(option.HasValue).IsFalse();
+        await Assert.That(option.Value).IsNull();
     }
 }
