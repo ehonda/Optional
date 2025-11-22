@@ -33,12 +33,13 @@ public class OptionTests
     }
 
     [Test]
-    public async Task Option_Some_Null_Should_Be_Some()
+    public async Task Option_Some_Null_Should_Throw()
     {
-        var option = Option.Some<string?>(null);
-
-        await Assert.That(option.HasValue).IsTrue();
-        await Assert.That(option.Value).IsNull();
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+        {
+            Option.Some<string?>(null);
+            return Task.CompletedTask;
+        });
     }
 
     [Test]
@@ -78,24 +79,6 @@ public class OptionTests
     }
 
     [Test]
-    public async Task Equality_Some_Null_Should_Not_Equal_None()
-    {
-        var someNull = Option.Some<string?>(null);
-        Option<string?> none = default;
-
-        await Assert.That(someNull).IsNotEqualTo(none);
-    }
-
-    [Test]
-    public async Task Equality_Two_Some_Nulls_Should_Be_Equal()
-    {
-        var a = Option.Some<string?>(null);
-        var b = Option.Some<string?>(null);
-
-        await Assert.That(a).IsEqualTo(b);
-    }
-
-    [Test]
     public async Task Implicit_Conversion_From_Value_Should_Create_Some()
     {
         Option<int> option = 42;
@@ -126,12 +109,13 @@ public class OptionTests
     }
 
     [Test]
-    public async Task Implicit_Conversion_From_Null_Should_Create_Some_Null()
+    public async Task Implicit_Conversion_From_Null_Should_Throw()
     {
-        Option<string?> option = null;
-
-        await Assert.That(option.HasValue).IsTrue();
-        await Assert.That(option.Value).IsNull();
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+        {
+            Option<string?> option = null;
+            return Task.CompletedTask;
+        });
     }
 
     [Test]

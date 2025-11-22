@@ -16,25 +16,19 @@ public static class Option
     /// <summary>
     /// Creates an <see cref="Option{T}"/> in the Some state containing the specified value.
     /// </summary>
-    /// <typeparam name="T">The type of the value. Can be nullable.</typeparam>
-    /// <param name="value">The value to contain in the option. Can be <c>null</c> if <typeparamref name="T"/> is nullable.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <param name="value">The value to contain in the option. Must not be <c>null</c>.</param>
     /// <returns>An option containing <paramref name="value"/>.</returns>
     /// <remarks>
     /// <para>
-    /// This method creates an option with a value, even if that value is <c>null</c>.
-    /// When <typeparamref name="T"/> is a nullable type, Some(null) is distinct from None.
-    /// </para>
-    /// <para>
-    /// For non-nullable reference types, the compiler will enforce that <paramref name="value"/> is not <c>null</c>.
+    /// This method creates an option with a value.
+    /// If <paramref name="value"/> is <c>null</c>, an <see cref="ArgumentNullException"/> is thrown.
     /// </para>
     /// </remarks>
     /// <example>
     /// <code>
     /// // Creating Some with non-nullable value
     /// Option&lt;string&gt; some = Option.Some("hello");
-    /// 
-    /// // Creating Some with nullable value (explicit type parameter required)
-    /// Option&lt;string?&gt; someNull = Option.Some&lt;string?&gt;(null);
     /// 
     /// // Creating Some with value type
     /// Option&lt;int&gt; someInt = Option.Some(42);
