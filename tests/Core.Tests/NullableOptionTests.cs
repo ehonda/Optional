@@ -240,4 +240,25 @@ public class NullableOptionTests
             Assert.Fail("Should have matched None pattern");
         }
     }
+
+    private interface IService
+    {
+        int GetValue();
+    }
+
+    private class Service : IService
+    {
+        public int GetValue() => 42;
+    }
+
+    [Test]
+    public async Task Implicit_Conversion_From_Class_To_Interface_Should_Create_Some()
+    {
+        // Implicit conversion from IService does not work, which is why we don't test for it.
+        // See limitations in README.md
+        NullableOption<IService> option = new Service();
+
+        await Assert.That(option.HasValue).IsTrue();
+        await Assert.That(option.Value!.GetValue()).IsEqualTo(42);
+    }
 }
