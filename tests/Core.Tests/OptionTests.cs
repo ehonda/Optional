@@ -207,4 +207,13 @@ public class OptionTests
             Assert.Fail("Should have matched None pattern");
         }
     }
+
+    [Test]
+    public async Task Default_Option_Of_Reference_Type_Should_Be_None()
+    {
+        Option<string> option = default;
+        
+        await Assert.That(option.HasValue).IsFalse();
+        await Assert.That(option.Value).IsNull();
+    }
 }
