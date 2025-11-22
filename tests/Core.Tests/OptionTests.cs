@@ -35,7 +35,7 @@ public class OptionTests
     [Test]
     public async Task Option_Some_Null_Should_Throw()
     {
-        await Assert.That(() => Option.Some<string?>(null)).Throws<ArgumentNullException>();
+        await Assert.That(() => Option.Some<string>(null!)).Throws<ArgumentNullException>();
     }
 
     [Test]
@@ -109,7 +109,7 @@ public class OptionTests
     {
         await Assert.That(() => 
         {
-            Option<string?> option = null;
+            Option<string> option = null!;
         }).Throws<ArgumentNullException>();
     }
 

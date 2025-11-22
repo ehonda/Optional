@@ -35,7 +35,7 @@ public class NullableOptionTests
     [Test]
     public async Task NullableOption_Some_Null_Should_Be_Some()
     {
-        var option = NullableOption.Some<string?>(null);
+        var option = NullableOption.Some<string>(null);
 
         await Assert.That(option.HasValue).IsTrue();
         await Assert.That(option.Value).IsNull();
@@ -80,8 +80,8 @@ public class NullableOptionTests
     [Test]
     public async Task Equality_Some_Null_Should_Not_Equal_None()
     {
-        var someNull = NullableOption.Some<string?>(null);
-        NullableOption<string?> none = default;
+        var someNull = NullableOption.Some<string>(null);
+        NullableOption<string> none = default;
 
         await Assert.That(someNull).IsNotEqualTo(none);
     }
@@ -89,8 +89,8 @@ public class NullableOptionTests
     [Test]
     public async Task Equality_Two_Some_Nulls_Should_Be_Equal()
     {
-        var a = NullableOption.Some<string?>(null);
-        var b = NullableOption.Some<string?>(null);
+        var a = NullableOption.Some<string>(null);
+        var b = NullableOption.Some<string>(null);
 
         await Assert.That(a).IsEqualTo(b);
     }
@@ -107,7 +107,7 @@ public class NullableOptionTests
     [Test]
     public async Task Implicit_Conversion_From_Null_Should_Create_Some_Null()
     {
-        NullableOption<string?> option = null;
+        NullableOption<string> option = null;
 
         await Assert.That(option.HasValue).IsTrue();
         await Assert.That(option.Value).IsNull();
@@ -154,11 +154,11 @@ public class NullableOptionTests
     [Test]
     public async Task Explicit_Conversion_To_Option_From_Null_Should_Throw()
     {
-        NullableOption<string?> nOpt = NullableOption.Some<string?>(null);
+        NullableOption<string> nOpt = NullableOption.Some<string>(null);
 
         await Assert.That(() => 
         {
-            var _ = (Option<string?>)nOpt;
+            var _ = (Option<string>)nOpt;
         }).Throws<InvalidOperationException>();
     }
 
