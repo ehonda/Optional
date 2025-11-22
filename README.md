@@ -4,17 +4,22 @@ A lightweight, type-safe implementation of the Option pattern for .NET.
 
 ## Overview
 
-`Option<T>` represents an optional value that can be in one of two states:
+This library provides two types to represent optional values:
 
-- **Some**: Contains a value (which can be `null` if `T` is nullable).
+1. **`Option<T>`**: Represents an optional value that, if present, is **guaranteed to be non-null**.
+2. **`NullableOption<T>`**: Represents an optional value that **can be null** when present.
+
+Both types can be in one of two states:
+
+- **Some**: Contains a value.
 - **None**: Contains no value.
-
-This distinction is particularly useful when you need to differentiate between a value that was never specified (None) and a value that was explicitly set to null (Some(null)).
 
 ## Quickstart
 
 ```csharp
 using EHonda.Optional.Core;
+
+// --- Option<T> (Non-nullable) ---
 
 // Create options
 Option<string> some = Option.Some("hello");
@@ -30,56 +35,106 @@ Option<IService> interfaceSome = Option.Some(service); // ✅ Use Some for inter
 // Check state
 if (some.HasValue) 
 {
-    Console.WriteLine(some.Value);
+    Console.WriteLine(some.Value); // No null check needed
 }
 
 // Retrieve values with fallbacks
 string v1 = some.Or("fallback"); // returns "hello"
 string v2 = none.Or("fallback"); // returns "fallback"
+
+// --- NullableOption<T> (Nullable) ---
+
+// Create options
+NullableOption<string> someNull = NullableOption.Some<string>(null);
+NullableOption<string> implicitNull = null;
+NullableOption<string> fromOption = some; // Implicit conversion from Option<T>
+
+// Accessing value (can be null)
+if (someNull.HasValue)
+{
+    Console.WriteLine(someNull.Value ?? "null");
+}
+
+// Retrieve values
+string? v3 = someNull.Or("fallback"); // returns null (because it is Some(null))
+string? v4 = implicitNull.Or("fallback"); // returns null
 ```
 
-## Motivation: The "Explicit Null" Use Case
+## Motivation & Use Cases
 
-This library was built to solve a specific problem in test infrastructure: distinguishing between "use the default value" and "use null".
+### Business Logic: `Option<T>`
 
-Consider a helper method for creating a service in a test. You want parameters to be optional so tests only specify what's relevant.
+In domain logic, you often want to avoid `null` entirely. `Option<T>` guarantees that if a value is present, it is not null. This removes the need for defensive null checks when accessing the underlying value.
 
-Without `Option<T>`, using a nullable parameter makes it impossible to distinguish "unspecified" from "explicit null":
+```csharp
+// Guaranteed non-null access
+var value = option.Value; 
+var s = option.Or(new S()); // No need for ?? new S()
+```
+
+### Test Infrastructure: `NullableOption<T>`
+
+In testing scenarios, you often need to distinguish between "use the default value" and "explicitly use null" (e.g., to test null guards).
+
+Without `NullableOption<T>`, using a nullable parameter makes it impossible to distinguish "unspecified" from "explicit null":
 
 ```csharp
 // Problem: Can't distinguish between default (null) and explicit null
 IService CreateService(IDependency? dependency = null) 
     => new Service(dependency ?? CreateDependency());
-
-// Both calls look the same to the method:
-CreateService();      // Intention: Use default dependency
-CreateService(null);  // Intention: Use null dependency (e.g. for null guard tests)
 ```
 
-With `Option<T>`, `None` is distinct from `null`:
+With `NullableOption<T>`, `None` is distinct from `Some(null)`:
 
 ```csharp
-// Solution: Option<T> distinguishes between None and Some(null)
-IService CreateService(Option<IDependency> dependency = default) 
-    => new Service(dependency.Or(CreateDependency()));
+// Solution: NullableOption<T> distinguishes between None and Some(null)
+IService CreateService(NullableOption<IDependency> dependency = default) 
+    => new Service(dependency.Or(CreateDependency));
 
-// Now the behavior is clear:
+// Usage:
 CreateService();      // dependency is None -> uses CreateDependency()
-CreateService(null);  // dependency is Some(null) -> uses null
+CreateService(null);  // dependency is Some(null) -> uses null (verifies null guard)
 ```
 
 ## Implicit Conversions
 
-`Option<T>` supports implicit conversions from `T` to `Option<T>`, enabling natural syntax:
+`Option<T>` supports implicit conversions from `T` (non-null).
+`NullableOption<T>` supports implicit conversions from `T` (nullable) and `Option<T>`.
 
 ```csharp
 Option<int> some = 42;             // Some(42)
-Option<string?> someNull = null;   // Some(null)
+// Option<string> fail = null;     // ❌ Throws ArgumentNullException
+
+NullableOption<string> n1 = "hello"; // Some("hello")
+NullableOption<string> n2 = null;    // Some(null)
+NullableOption<string> n3 = some;    // Some(42)
+```
+
+## Explicit Conversions
+
+Both types support explicit conversions to retrieve their values or convert between types.
+
+```csharp
+// Option<T> -> T
+Option<int> some = 42;
+int val = (int)some; // Returns 42
+// int val2 = (int)Option.None<int>(); // ❌ Throws InvalidOperationException
+
+// NullableOption<T> -> T?
+NullableOption<int> nSome = 42;
+int? nVal = (int?)nSome; // Returns 42
+
+// NullableOption<T> -> Option<T>
+NullableOption<int> nOpt = 42;
+Option<int> opt = (Option<int>)nOpt; // Returns Some(42)
+
+NullableOption<string> nNull = null;
+// Option<string> opt2 = (Option<string>)nNull; // ❌ Throws InvalidOperationException (cannot contain null)
 ```
 
 ### ⚠️ Limitations with Interfaces
 
-You will encounter a compiler error when implicitly converting an interface variable to `Option<Interface>`.
+You will encounter a compiler error when implicitly converting an interface variable to `Option<Interface>` or `NullableOption<Interface>`.
 
 ```csharp
 public interface IService { }
@@ -100,8 +155,9 @@ The compiler looks for conversion operators that convert from a type **encompass
 
 Since `IService` is an interface, it is not considered to be encompassed by the operator's parameter type, so the conversion is not found.
 
-**Workaround:** Use `Option.Some()` explicitly:
+**Workaround:** Use `Option.Some()` or `NullableOption.Some()` explicitly:
 
 ```csharp
 Option<IService> fixed = Option.Some(interfaceRef);
+NullableOption<IService> fixedNull = NullableOption.Some(interfaceRef);
 ```
