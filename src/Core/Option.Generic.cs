@@ -113,7 +113,7 @@ public readonly record struct Option<T>
     [MustUseReturnValue]
     public T Or(T defaultValue)
     {
-        return HasValue ? Value! : defaultValue;
+        return HasValue ? Value : defaultValue;
     }
 
     /// <summary>
@@ -152,7 +152,7 @@ public readonly record struct Option<T>
             throw new ArgumentNullException(nameof(factory));
         }
 
-        return HasValue ? Value! : factory();
+        return HasValue ? Value : factory();
     }
 
     /// <summary>
@@ -222,7 +222,7 @@ public readonly record struct Option<T>
             throw new InvalidOperationException("Option has no value.");
         }
 
-        return Value!;
+        return Value;
     }
 
     /// <summary>
@@ -252,7 +252,7 @@ public readonly record struct Option<T>
             throw new InvalidOperationException(message);
         }
 
-        return Value!;
+        return Value;
     }
 
     /// <summary>
@@ -293,7 +293,7 @@ public readonly record struct Option<T>
             throw exceptionFactory();
         }
 
-        return Value!;
+        return Value;
     }
 
     /// <summary>
