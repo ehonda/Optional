@@ -1,4 +1,4 @@
-﻿using EHonda.Optional.Core;
+using EHonda.Optional.Core;
 
 namespace EHonda.Optional.Core.Tests;
 
