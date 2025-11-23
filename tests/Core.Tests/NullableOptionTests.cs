@@ -114,6 +114,24 @@ public class NullableOptionTests
     }
 
     [Test]
+    public async Task Implicit_Conversion_From_Null_Nullable_Int_Should_Create_Some_Null()
+    {
+        NullableOption<int?> option = null;
+
+        await Assert.That(option.HasValue).IsTrue();
+        await Assert.That(option.Value).IsNull();
+    }
+
+        [Test]
+    public async Task Implicit_Conversion_From_Null_Nullable_String_Should_Create_Some_Null()
+    {
+        NullableOption<string> option = null;
+
+        await Assert.That(option.HasValue).IsTrue();
+        await Assert.That(option.Value).IsNull();
+    }
+
+    [Test]
     public async Task Implicit_Conversion_From_Option_Should_Work()
     {
         Option<int> opt = Option.Some(42);
