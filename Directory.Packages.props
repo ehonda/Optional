@@ -4,6 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="JetBrains.Annotations" Version="2025.2.4" />
-    <PackageVersion Include="TUnit" Version="1.5.80" />
+    <PackageVersion Include="TUnit" Version="1.6.15" />
   </ItemGroup>
 </Project>
